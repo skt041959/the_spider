@@ -18,7 +18,6 @@ from myproject.items import CrawledItem, PassItem
 class SavePipeline(object): #下载符合抓取下载条件的网页
 
     def __init__(self):
-        print('+SavePipeline')
         rs = ReadSetting() #读取setting文件中的保存参数
         self.savename = rs.savingname()
         self.location = rs.savinglocation()
@@ -62,7 +61,6 @@ class SavePipeline(object): #下载符合抓取下载条件的网页
         return path
 
     def open_spider(self, spider): #启动spider进程时,自动调用该函数,初始化页面计数器
-        print("+SavePipeline opened spider")
         self.index = 0 #记录符合下载条件的页面数
         self.page_count = dict() #符合下载条件的页面及其对应编号的字典对象
         self.success = 0 #记录成功下载的条目数
@@ -73,7 +71,6 @@ class SavePipeline(object): #下载符合抓取下载条件的网页
     def process_item(self, item, spider): #下载保存(抓取下载范围内的)页面
         try: #try部分: 报错前的程序不回滚,即前两个计数器始终执行+1; 报错后的程序不执行
             self.index += 1
-            #item['url'] = item['url'].strip('/')
             self.page_count.setdefault(item['url'].strip('/'), self.index)
             GlobalLogging.getInstance().info("[stats] scrapeditem : {0}".format(self.index))
 
@@ -94,7 +91,6 @@ class SavePipeline(object): #下载符合抓取下载条件的网页
 class StatisticsPipeline(object): #对爬取到的页面进行分类统计
 
     def __init__(self):
-        print('+StatisticsPipeline')
         rs = ReadSetting() #读取setting文件中的保存参数
         self.pagecount_max = rs.pagenumber() #读取“最大爬取页面数”
         self.itemcount_max = rs.itemnumber() #读取“最大抓取条目数”
@@ -106,14 +102,16 @@ class StatisticsPipeline(object): #对爬取到的页面进行分类统计
     def process_item(self, item, spider): #对爬取到的页面进行分类统计,其中的CrawledItem传给SavePipeline类进行下载
 
         if isinstance(item, PassItem): #若页面是PassItem
-            if self.pagecount == self.pagecount_max: #若爬取页面数达到最大值
-                GlobalLogging.getInstance().info("[stop_pagecount] reach max pagecount : {0}".format(self.pagecount)) #发消息停止spider
-                self.pagecount += 1 #使self.pagecount > self.pagecount_max,之后不再接收新的PassItem
-                raise DropItem("PassItem: %s" % item['url']) #丢弃该item
-            elif self.pagecount > self.pagecount_max or self.itemcount >= self.itemcount_max: #若爬取页面数或抓取下载条目数超过最大值
-                raise DropItem("PassItem: %s" % item['url'])
+            
+            if self.pagecount_max != 0: #设置“最大爬取页面数”不为0
+                if self.pagecount == self.pagecount_max: #若爬取页面数达到最大值
+                    GlobalLogging.getInstance().info("[stop_pagecount] reach max pagecount : {0}".format(self.pagecount)) #发消息停止spider
+                    self.pagecount += 1 #使self.pagecount > self.pagecount_max,之后不再接收新的PassItem
+                    raise DropItem("PassItem: %s" % item['url']) #丢弃该item
+                elif self.pagecount > self.pagecount_max or self.itemcount >= self.itemcount_max: #若爬取页面数或抓取下载条目数超过最大值
+                    raise DropItem("PassItem: %s" % item['url'])
 
-            spider.linkmatrix.addentirelink(item['url'], item['referer']) #记录到entire_struct字典对象中
+            spider.linkmatrix.addentirelink(item['url'], item['referer']) #记录到entire_struct_0字典对象中
 
             url = item['url'].strip('/')
             if url not in self.page_seen: #判断item是否重复
@@ -123,14 +121,16 @@ class StatisticsPipeline(object): #对爬取到的页面进行分类统计
             raise DropItem("PassItem: %s" % item['url']) #丢弃该item
 
         elif isinstance(item, CrawledItem): #若页面是CrawledItem
-            if self.itemcount == self.itemcount_max: #若抓取下载条目数达到最大值
-                GlobalLogging.getInstance().info("[stop_itemcount] reach max itemcount : {0}".format(self.itemcount)) #发消息停止spider
-                self.itemcount += 1 #使self.itemcount > self.itemcount_max,之后不再接收新的CrawledItem
-                raise DropItem("Duplicate item found: %s" % item['url']) #丢弃该item
-            elif self.itemcount > self.itemcount_max or self.pagecount >= self.pagecount_max: #若抓取下载条目数或爬取页面数超过最大值
-                raise DropItem("Duplicate item found: %s" % item['url'])
+            
+            if self.itemcount_max != 0: #设置“最大抓取条目数”不为0
+                if self.itemcount == self.itemcount_max: #若抓取下载条目数达到最大值
+                    GlobalLogging.getInstance().info("[stop_itemcount] reach max itemcount : {0}".format(self.itemcount)) #发消息停止spider
+                    self.itemcount += 1 #使self.itemcount > self.itemcount_max,之后不再接收新的CrawledItem
+                    raise DropItem("Duplicate item found: %s" % item['url']) #丢弃该item
+                elif self.itemcount > self.itemcount_max or self.pagecount >= self.pagecount_max: #若抓取下载条目数或爬取页面数超过最大值
+                    raise DropItem("Duplicate item found: %s" % item['url'])
 
-            spider.linkmatrix.addforwardlink(item['url'], item['referer']) #记录到forwardlinks字典对象中
+            spider.linkmatrix.addforwardlink(item['url'], item['referer']) #记录到forwardlinks_0字典对象中
 
             url = item['url'].strip('/')
             if url not in self.item_seen: #判断item是否重复

@@ -20,10 +20,15 @@ class LinkMatrix():
         rs = ReadSetting()
         self.allowed_domains = rs.readalloweddomain()
 
+        #此三个字典通过合并duplicate_struct字典,覆盖反方向的链接(即链接两端均被记载,但只记录过单方向链接)
         self.entire_struct = dict() #保存网站所有的页面结构,referer、url在爬取范围(限制域)内,不一定符合抓取下载规则
         self.forwardlinks = dict() #保存所有抓取下载范围内的页面的结构,referer、url符合抓取下载规则
-        self.outlinks = dict() #记录所有的外链,referer符合抓取下载规则,url在抓取下载范围外(包括爬取范围外的页面)
+        self.outlinks = dict() #记录所有的外链,referer符合抓取下载规则,url在抓取下载范围外(包括爬取范围内外的页面)
 
+        self.duplicate_struct = dict() #对于重复的request,记录对应的referer->url
+
+        #此三个字典只覆盖了单方向链接(即已经过滤掉重复Request所对应的链接)
+        self.entire_struct_0 = dict() #保存网站所有的页面结构,referer、url在爬取范围(限制域)内,不一定符合抓取下载规则
         self.forwardlinks_0 = dict() #保存所有抓取下载范围内的页面的结构,referer不一定符合抓取下载规则,url符合抓取下载规则
         self.outlinks_0 = dict() #记录所有的外链,referer不一定符合抓取下载规则(但在爬取范围内),url在爬取范围(限制域)外
 
@@ -32,7 +37,7 @@ class LinkMatrix():
         for e in self.roots:
             if e.endswith('/'): #将url统一为不以'/'结尾的形式
                 e = e[:-1]
-            self.entire_struct.setdefault(e, set())
+            self.entire_struct_0.setdefault(e, set())
             self.forwardlinks_0.setdefault(e, dict())
             self.outlinks_0.setdefault(e, set())
 
@@ -41,23 +46,28 @@ class LinkMatrix():
     def setIndexMap(self, index): #为符合下载条件的页面编号,index形式为{url:index}
         self.indexmap = index
 
-    def addentirelink(self, url, referer): #构建entire_struct字典对象
+    def addduplicatelink(self, url, referer): #构建duplicate_struct字典对象(对于重复的request,记录对应的referer->url)
         referer = referer.strip('/') #将链接统一为不以'/'结尾的形式
         url = url.strip('/')
 
-        self.entire_struct.setdefault(referer, set())
-        self.entire_struct[referer].add(url)
-        self.entire_struct.setdefault(url, set())
+        self.duplicate_struct.setdefault(referer, set())
+        self.duplicate_struct[referer].add(url)
 
-    def addforwardlink(self, url, referer): #构建forwardlinks_0字典对象
+    def addentirelink(self, url, referer): #构建entire_struct_0字典对象(只覆盖了单方向)
+        referer = referer.strip('/') #将链接统一为不以'/'结尾的形式
+        url = url.strip('/')
+
+        self.entire_struct_0.setdefault(referer, set())
+        self.entire_struct_0[referer].add(url)
+        self.entire_struct_0.setdefault(url, set())
+
+    def addforwardlink(self, url, referer): #构建forwardlinks_0字典对象(只覆盖了单方向)
         referer = referer.strip('/')
         url = url.strip('/')
 
         self.forwardlinks_0.setdefault(referer, dict())
-        if url in self.forwardlinks_0[referer].keys():
-            self.forwardlinks_0[referer][url] += 1
-        else:
-            self.forwardlinks_0[referer][url] = 1
+        self.forwardlinks_0[referer].setdefault(url, 0)
+        self.forwardlinks_0[referer][url] = 1
 
     def addoutlink(self, url, referer): #构建outlinks_0字典对象
         referer = referer.strip('/')
@@ -66,11 +76,24 @@ class LinkMatrix():
         self.outlinks_0.setdefault(referer, set())
         self.outlinks_0[referer].add(url)
 
+    def structure_entirelink(self): #构建entire_struct字典对象
+        for k in self.entire_struct_0.keys():
+            self.entire_struct.setdefault(k, set())
+            self.entire_struct[k] = self.entire_struct_0[k]
+            if k in self.duplicate_struct.keys():
+                for t in self.duplicate_struct[k]:
+                    if t in self.entire_struct_0.keys():
+                        self.entire_struct[k].add(t)
+
     def structure_forwardlinks(self): #构建forwardlinks字典对象
         for k in self.indexmap.keys():
             self.forwardlinks.setdefault(k, dict())
             if k in self.forwardlinks_0.keys():
                 self.forwardlinks[k] = self.forwardlinks_0[k]
+            if k in self.duplicate_struct.keys():
+                for t in self.duplicate_struct[k]:
+                    if t and (t in self.indexmap.keys()):
+                        self.forwardlinks[k][t] = 1
 
     def structure_outlinks(self): #构建outlinks字典对象
         for k in self.indexmap.keys():
@@ -81,10 +104,14 @@ class LinkMatrix():
             if k in self.outlinks_0.keys():
                 for e in self.outlinks_0[k]:
                     self.outlinks[k].add(e)
+            if k in self.duplicate_struct.keys():
+                for t in self.duplicate_struct[k]:
+                    if t and (t not in self.indexmap.keys()):
+                        self.outlinks[k].add(t)
+                        
 
     def store(self): #以数据流形式将字典对象写入文件
         try:
-            print("Store", self.projectname)
             os.makedirs(self.projectname) #创建以项目名命名的文件夹
         except OSError as err:
             if err.errno != 17:
@@ -99,16 +126,17 @@ class LinkMatrix():
                 writer.writerow(row)
 
         with open(self.projectname+"/linkgraph", "wb") as f: #生成基本数据存储文件(包含范围数据和三个字典对象)
-            pickle.dump((self.roots, self.root_site, self.allowed_domains, self.entire_struct, \
-                self.forwardlinks_0, self.outlinks_0, self.forwardlinks, self.outlinks), f)
+            pickle.dump((self.roots, self.root_site, self.allowed_domains, self.indexmap, self.duplicate_struct, \
+                         self.entire_struct_0, self.forwardlinks_0, self.outlinks_0, \
+                         self.entire_struct, self.forwardlinks, self.outlinks), f)
 
-        print("dumped")
 
     def load(self): #以数据流形式从文件中读取字典对象
         try:
             with open(self.projectname+"/linkgraph", "r") as f:
-                self.roots, self.root_site, self.allowed_domains, self.entire_struct, \
-                    self.forwardlinks_0, self.outlinks_0, self.forwardlinks, self.outlinks = pickle.load(f)
+                self.roots, self.root_site, self.allowed_domains, self.indexmap, self.duplicate_struct, \
+                            self.entire_struct_0, self.forwardlinks_0, self.outlinks_0, \
+                            self.entire_struct, self.forwardlinks, self.outlinks = pickle.load(f)
 
             with open(self.projectname+"/page index.csv", "r") as f:
                 self.indexmap = {}
@@ -117,6 +145,7 @@ class LinkMatrix():
                     self.indexmap.update({e["Url"]:e["Index"]})
         except IOError as err:
             raise err
+
 
     def iter_dfs(self, links, root): #深度优先遍历,生成链接链(暂时无用)
         accessed, queue = set(), []
@@ -128,6 +157,7 @@ class LinkMatrix():
             accessed.add(u)
             queue.extend(links[u].keys())
             yield u
+
 
     def domain_links_count(self): #基于限制域的各类链接统计(所有下载条目均属于这些域)
         count = {}
@@ -197,7 +227,8 @@ class LinkMatrix():
                             try:
                                 to_host = urlparse(t).hostname
                             except KeyError as err:
-                                print(err)
+                                #print(err)
+                                pass
                                 count[from_host]['OutLinks'] += 1
                             else:
                                 if to_host == from_host:
@@ -205,7 +236,8 @@ class LinkMatrix():
                                 else:
                                     count[from_host]['OutLinks'] += 1
             except KeyError as err:
-                print(err)
+                #print(err)
+                pass
 
         for k,v in self.forwardlinks.items():
             try:
@@ -214,7 +246,8 @@ class LinkMatrix():
                     count[from_host]['Pages_2'] += 1
                     count[from_host]['KnownLinks'] += len(v)
             except KeyError as err:
-                print(err)
+                #print(err)
+                pass
 
         for k,v in self.outlinks.items():
             try:
@@ -222,7 +255,8 @@ class LinkMatrix():
                 if from_host in self.root_site:
                     count[from_host]['UnknownLinks'] += len(v)
             except KeyError as err:
-                print(err)
+                #print(err)
+                pass
 
         for k,v in self.outlinks_0.items():
             if k in self.indexmap.keys():
@@ -231,7 +265,8 @@ class LinkMatrix():
                     if from_host in self.root_site:
                         count[from_host]['OutLinks'] += len(v)
                 except KeyError as err:
-                    print(err)
+                    #print(err)
+                    pass
 
         return count
 
@@ -317,7 +352,7 @@ class LinkMatrix():
             fields = ["Domain ", "Pages_1", "Pages_2", "KnownLinks", "UnknownLinks", "InterLinks", "OutLinks"]
             writer = csv.DictWriter(f, fieldnames = fields)
             writer.writeheader()
-            for k,v in site_count.items():
+            for k,v in domain_count.items():
                 row = {fields[0]:k}
                 row.update(v)
                 #print(row)
@@ -430,7 +465,7 @@ class LinkMatrix():
         with open(self.projectname+"/link_struct.txt", "w") as f:
             lines = []
             for k,v in self.forwardlinks.items():
-                if len(v) > 1 or len(self.outlinks[k]) > 1:
+                if len(v) >= 1 or len(self.outlinks[k]) >= 1:
                     lines.append(k+'\n')
                     for r in v.keys():
                         lines.append("\t"+r+'\n')
@@ -443,7 +478,7 @@ class LinkMatrix():
         with open(self.projectname+"/inlink_struct.txt", "w") as f:
             lines = []
             for k,v in self.forwardlinks.items():
-                if len(v) > 1:
+                if len(v) >= 1:
                     lines.append(k+'\n')
                     for r in v.keys():
                         lines.append("\t"+r+'\n')
@@ -454,7 +489,7 @@ class LinkMatrix():
         with open(self.projectname+"/outlink_struct.txt", "w") as f:
             lines = []
             for k,v in self.outlinks.items():
-                if len(v) > 1:
+                if len(v) >= 1:
                     lines.append(k+'\n')
                     for r in v:
                         lines.append("\t"+r+'\n')
@@ -518,7 +553,8 @@ class LinkMatrix():
                             count[from_host]['OutLinks'] += 1
                         count[from_host]['KnownLinks'] += 1
             except KeyError as err:
-                print(err)
+                #print(err)
+                pass
 
         for k,v in self.outlinks_0.items():
             if k in self.entire_struct.keys():
@@ -528,7 +564,8 @@ class LinkMatrix():
                         count[from_host]['OutLinks'] += len(v)
                         count[from_host]['UnknownLinks'] += len(v)
                 except KeyError as err:
-                    print(err)
+                    #print(err)
+                    pass
 
         return count
 
@@ -609,7 +646,7 @@ class LinkMatrix():
             fields = ["Domain ", "Pages", "KnownLinks", "UnknownLinks", "InterLinks", "OutLinks"]
             writer = csv.DictWriter(f, fieldnames = fields)
             writer.writeheader()
-            for k,v in all_site_count.items():
+            for k,v in all_domain_count.items():
                 row = {fields[0]:k}
                 row.update(v)
                 #print(row)
@@ -720,12 +757,13 @@ class LinkMatrix():
         with open(self.projectname+"/all_link_struct.txt", "w") as f:
             lines = []
             for k,v in self.entire_struct.items():
-                if len(v) > 1 or ( k in self.outlinks_0.keys()):
+                if len(v) >= 1 or ( k in self.outlinks_0.keys()):
                     lines.append(k+'\n')
                     for r in v:
                         lines.append("\t"+r+'\n')
-                    for r in self.outlinks_0[k]:
-                        lines.append("\t"+r+'\n')
+                    if k in self.outlinks_0.keys():
+                        for r in self.outlinks_0[k]:
+                            lines.append("\t"+r+'\n')
                     lines.append('\n')
             f.writelines(lines)
 
@@ -733,7 +771,7 @@ class LinkMatrix():
         with open(self.projectname+"/all_inlink_struct.txt", "w") as f:
             lines = []
             for k,v in self.entire_struct.items():
-                if len(v) > 1:
+                if len(v) >= 1:
                     lines.append(k+'\n')
                     for r in v:
                         lines.append("\t"+r+'\n')
@@ -744,7 +782,7 @@ class LinkMatrix():
         with open(self.projectname+"/all_outlink_struct.txt", "w") as f:
             lines = []
             for k,v in self.outlinks_0.items():
-                if k in self.entire_struct.keys() and len(v) > 1:
+                if k in self.entire_struct.keys() and len(v) >= 1:
                     lines.append(k+'\n')
                     for r in v:
                         lines.append("\t"+r+'\n')

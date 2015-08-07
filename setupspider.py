@@ -7,9 +7,10 @@ from scrapy.crawler import Crawler
 from scrapy import log, signals
 from scrapy.utils.project import get_project_settings
 
-from myproject.spiders.auto_spider import AutoSpider #此三行导入项目中spider目录下可用的spider类
+from myproject.spiders.auto_spider import AutoSpider #此四行导入项目中spider目录下可用的spider类
 from myproject.spiders.match_spider import MatchSpider
 from myproject.spiders.xpath_spider import XpathSpider
+from myproject.spiders.xpath_spider0 import XpathSpider0
 
 from GlobalLogging import GlobalLogging
 
@@ -34,7 +35,6 @@ class setupspider():
 
 
     def getLog(self, s): #将结果信息传给主进程
-        #print(s)
         if s.startswith("INFO"):
             log_type = s[s.index('[')+1 : s.index(']')]
             if log_type == "success":
@@ -48,25 +48,21 @@ class setupspider():
             elif log_type =="stop_itemcount":
                 self.crawler.stop()
         else:
-            print(s)
+            pass
 
         if self.ctrl_conn.poll(): #查询是否接收到控制信息
             c = self.ctrl_conn.recv()
             if c == 'stop crawl':
-                print("=============================received stop==================================")
                 self.crawler.stop()
             elif c == 'pause crawl':
-                print("=============================received pause=================================")
                 self.crawler.engine.pause()
                 while 1:
                     if self.ctrl_conn.poll(1):
                         c = self.ctrl_conn.recv()
                         if c == 'unpause crawl':
-                            print("=============================received unpause===============================")
                             self.crawler.engine.unpause()
                             break
                         elif c == 'stop crawl':
-                            print("=============================received stop==================================")
                             self.crawler.stop()
                             break
 
@@ -80,6 +76,8 @@ class setupspider():
             self.spider = MatchSpider()   #创建一个match_spider的爬虫实例
         elif self.rule == "xpath":
             self.spider = XpathSpider()   #创建一个xpath_spider的爬虫实例
+        elif self.rule == "xpath0":
+            self.spider = XpathSpider0()   #创建一个xpath_spider0的爬虫实例
 
         if self.spider:
             self.crawler.crawl(self.spider)
@@ -90,7 +88,8 @@ class setupspider():
     def stop(self):
         if reactor.running:
             reactor.stop()
-            
+
+        self.spider.linkmatrix.structure_entirelink() #构建entire_struct字典对象
         self.spider.linkmatrix.structure_forwardlinks() #构建forwardlinks字典对象
         self.spider.linkmatrix.structure_outlinks() #构建outlinks字典对象
         self.spider.linkmatrix.store() #以数据流形式将字典对象写入文件

@@ -11,7 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>爬虫软件</string>
+   <string>LunaSpider</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>moon.ico</normaloff>moon.ico</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="centralLayout">
@@ -155,7 +159,7 @@
            <item>
             <widget class="QLabel" name="rangelabel">
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;设置爬取范围&lt;/p&gt;&lt;p&gt;即:设置限定域&lt;/p&gt;&lt;p&gt;爬取的url必须在域内&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;设置限定域:&lt;/p&gt;&lt;p&gt;爬取到的url在域内时,&lt;/p&gt;&lt;p&gt;才对其进行跟踪和下载&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
             </widget>
            </item>
@@ -1008,7 +1012,7 @@ Xpath表达式</string>
     <property name="title">
      <string>帮助</string>
     </property>
-    <addaction name="helpdocumentaction"/>
+    <addaction name="documentationaction"/>
     <addaction name="separator"/>
     <addaction name="aboutsoftwareaction"/>
    </widget>
@@ -1387,6 +1391,11 @@ Xpath表达式</string>
   <action name="outputaction">
    <property name="text">
     <string>生成统计结果</string>
+   </property>
+  </action>
+  <action name="documentationaction">
+   <property name="text">
+    <string>说明文档</string>
    </property>
   </action>
  </widget>

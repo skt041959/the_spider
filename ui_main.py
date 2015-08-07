@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Mon Mar 16 05:40:26 2015
+# Created: Fri Jul 10 02:39:20 2015
 #      by: PyQt4 UI code generator 4.11.3
 #
 # WARNING! All changes made in this file will be lost!
@@ -27,6 +27,9 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
         MainWindow.resize(985, 656)
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(_fromUtf8("moon.ico")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        MainWindow.setWindowIcon(icon)
         self.centralwidget = QtGui.QWidget(MainWindow)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
         self.centralLayout = QtGui.QVBoxLayout(self.centralwidget)
@@ -560,13 +563,15 @@ class Ui_MainWindow(object):
         self.action83.setObjectName(_fromUtf8("action83"))
         self.outputaction = QtGui.QAction(MainWindow)
         self.outputaction.setObjectName(_fromUtf8("outputaction"))
+        self.documentationaction = QtGui.QAction(MainWindow)
+        self.documentationaction.setObjectName(_fromUtf8("documentationaction"))
         self.filemenu.addAction(self.newprojectaction)
         self.filemenu.addAction(self.startprojectaction)
         self.filemenu.addAction(self.pauseactionaction)
         self.filemenu.addAction(self.stopprojectaction)
         self.filemenu.addSeparator()
         self.filemenu.addAction(self.exitsoftwareaction)
-        self.helpmenu.addAction(self.helpdocumentaction)
+        self.helpmenu.addAction(self.documentationaction)
         self.helpmenu.addSeparator()
         self.helpmenu.addAction(self.aboutsoftwareaction)
         self.menu_1.addAction(self.action11)
@@ -617,12 +622,12 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
-        MainWindow.setWindowTitle(_translate("MainWindow", "爬虫软件", None))
+        MainWindow.setWindowTitle(_translate("MainWindow", "LunaSpider", None))
         self.urlgroupBox.setTitle(_translate("MainWindow", "起始URL", None))
         self.addurlButton.setText(_translate("MainWindow", "添加", None))
         self.emptyurlButton.setText(_translate("MainWindow", "清空", None))
         self.rangegroupBox.setTitle(_translate("MainWindow", "爬取范围", None))
-        self.rangelabel.setText(_translate("MainWindow", "<html><head/><body><p>设置爬取范围</p><p>即:设置限定域</p><p>爬取的url必须在域内</p></body></html>", None))
+        self.rangelabel.setText(_translate("MainWindow", "<html><head/><body><p>设置限定域:</p><p>爬取到的url在域内时,</p><p>才对其进行跟踪和下载</p></body></html>", None))
         self.rangeplainTextEdit.setPlainText(_translate("MainWindow", "allowed_domains=(\'example.com\', \'im.nju.edu.cn\')", None))
         self.rangetextlabel.setText(_translate("MainWindow", "按范例将引号\n"
 "中内容替换；\n"
@@ -745,4 +750,5 @@ class Ui_MainWindow(object):
         self.action82.setText(_translate("MainWindow", "互链统计矩阵", None))
         self.action83.setText(_translate("MainWindow", "互链统计矩阵(去除全零行)", None))
         self.outputaction.setText(_translate("MainWindow", "生成统计结果", None))
+        self.documentationaction.setText(_translate("MainWindow", "说明文档", None))
 

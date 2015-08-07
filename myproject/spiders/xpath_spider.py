@@ -64,6 +64,15 @@ class XpathSpider(CrawlSpider): #当url获取规则为“Xpath表达式”
         self.log('receive xpath response from {0}'.format(response.url), INFO) #记录log,收到一个Response
         response.selector.remove_namespaces()
 
+        item = PassItem() #所有传递到本函数中的Response,生成PassItem;即所有限定域内的url,生成一个PassItem
+        item['url'] = response.url
+        try:
+            item['referer'] = response.request.headers['Referer']
+        except KeyError as e:
+            pass
+        else:
+            yield item
+            
         item = CrawledItem()
         item['url'] = response.url
         item['referer'] = response.request.headers['Referer']
@@ -84,5 +93,5 @@ class XpathSpider(CrawlSpider): #当url获取规则为“Xpath表达式”
             item['title'] = ''
             item['body'] = response.body
         finally:
-            return item
+            yield item
 
