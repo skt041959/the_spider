@@ -40,7 +40,7 @@ base = None
 if sys.platform == "win32":
     base = "Win32GUI"
 
-setup(  name = "LunaSpider",
+setup(  name = "LunaSpider", # comment
         version = "1.0",
         description = "LunaSpider", # "spider program for IM College"
         options = {"build_exe": build_exe_options},
